@@ -1,15 +1,13 @@
 // HMJ
 import * as THREE from 'three';
-import React, {
-  useRef,
-  useMemo,
-} from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import React, { useRef, useMemo, useEffect } from 'react';
+import { useFrame, useThree, useLoader } from '@react-three/fiber';
 // import { /*useAnimations,*/ useFBO, useGLTF } from '@react-three/drei';
 import glsl from 'babel-plugin-glsl/macro';
+import { TextureLoader } from 'three/src/loaders/TextureLoader';
 
-type SphereMeshResolution = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;  
-const SPHERE_MESH_RESOLUTION: SphereMeshResolution = 8; 
+type SphereMeshResolution = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
+const SPHERE_MESH_RESOLUTION: SphereMeshResolution = 128;
 
 /**
  * ## Rendering Pipeline: webgl + three.js ###
@@ -67,7 +65,9 @@ const vertexShader = glsl`
 	uniform vec2 mouse;
 	//Samplers encapsulate the various render states associated with reading textures: coordinate system, addressing mode, and filtering
 	//We can create them from within the shader, but easier to just feed it in. 
-	uniform sampler2D tSurface;
+	uniform sampler2D tDiffuse;
+	uniform sampler2D tDisplacement; 
+	uniform sampler2D tRareEarthMetals;
 
 	varying vec3 vPosition; 
 	varying vec2 vUv; 
@@ -75,25 +75,32 @@ const vertexShader = glsl`
 
 	 void main()
 	 {
-		 // pass vertex attributes to frag shader via varyings:
-			vPosition = position; 
-			vUv = uv; 
-			vNormal = normal; 
+		 	//terrain 
+			float displacement = texture2D(tDisplacement, uv).r; //Extracting the color information from the image
+			float displaceFactor = 0.0001;
+			vPosition = position + (displacement * displaceFactor);
+
 
 			// note: There is a wrapping on the texture, which means when we read from coordinates outside
 			// the domain, it wraps back on itself
 
-			vec4 modelPosition = modelMatrix * vec4( vec3(position.x, position.y, position.z), 1.0);
+			vec4 modelPosition = modelMatrix * vec4( vec3(vPosition.x, vPosition.y, vPosition.z), 1.0);
 			vec4 viewPosition = viewMatrix * modelPosition;
 			vec4 projectionPosition = projectionMatrix * viewPosition;
 			gl_Position = projectionPosition;
+			// pass vertex attributes to frag shader via varyings:
+			vPosition = position; 
+			vUv = uv; 
+			vNormal = normalize(normalMatrix * normal); 
 	}
 `;
 
 const fragmentShader = glsl`
 // #pragma glslify: blend = require("../../shaders/functions/glsl-blend/add.glsl")
 uniform vec2 mouse;
-uniform sampler2D tSurface;
+uniform sampler2D tDiffuse;
+uniform sampler2D tDisplacement; 
+uniform sampler2D tRareEarthMetals;
 
 varying vec3 vPosition; 
 varying vec2 vUv; 
@@ -102,50 +109,86 @@ varying vec3 vNormal;
 
 void main()
 {
+	//atmosphere
+	float atmosphereIntensity = pow(0.6 - dot(vNormal, vec3(0., 0., 1.)), 2.0); 
+	vec3 atmosphere = vec3(0.3, 0.6, 1.) * pow(atmosphereIntensity, 1.5);  
 
-	vec4 surfaceColor = texture2D( tSurface, vec2( vUv.x, vUv.y ) ); 
+	vec4 surfaceColor = texture2D( tDiffuse, vec2( vUv.x, vUv.y ) ); 
 	
 	
-  // gl_FragColor = vec4(surfaceColor.xyz, 1.);
-	gl_FragColor = vec4(1., 0., 0., 1.);
+  gl_FragColor = vec4(surfaceColor.xyz + atmosphere, 1.);
+	// gl_FragColor = vec4(1.0, 0., 0., 1.);
 
 }
 `;
 
-
-
-
 // We can represent the visualisation in different ways
 //eslint-disable-next-line
-type RepresentationADT = { kind: 'copernican' } | { kind: 'heliocentric' } | {kind: 'flatlander'} | {kind: '4D'};
+type RepresentationADT =
+  | { kind: 'copernican' }
+  | { kind: 'heliocentric' }
+  | { kind: 'flatlander' }
+  | { kind: '4D' };
+
+type Url = string;
 
 type HeavenlyBodyPropsType = {
-	radius: number;
-	// position: [number, number, number];
-	// rotation: [number, number, number];
+  radius: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  diffuse_map: Url;
+  displacement_map: Url;
+  rare_earth_metals_map: Url;
+  gravity_map: Url;
 };
 
 const HeavenlyBody = (props: HeavenlyBodyPropsType): React.ReactElement<HeavenlyBodyPropsType> => {
+  const [
+    diffuse_map_texture,
+    displacement_map_texture,
+    gravity_map_texture,
+    rare_earth_metals_map_texture,
+  ] = useLoader(TextureLoader, [
+    props.diffuse_map,
+    props.displacement_map,
+    props.gravity_map,
+    props.rare_earth_metals_map,
+  ]);
 
-	const { mouse } = useThree();
+  const { mouse } = useThree();
   const mesh = useRef<THREE.Mesh>(null!);
   const shaderMaterialRef = useRef<THREE.ShaderMaterial>(null!);
 
-	const initialUniforms = useMemo(() => {
+  const initialUniforms = useMemo(() => {
     return {
       mouse: { value: mouse },
-      tSurface: { value: THREE.Texture.DEFAULT_IMAGE },
+      tDiffuse: { value: THREE.Texture.DEFAULT_IMAGE },
+      tDisplacement: { value: THREE.Texture.DEFAULT_IMAGE },
+      tGravity: { value: THREE.Texture.DEFAULT_IMAGE },
+      tRareEarthMetals: { value: THREE.Texture.DEFAULT_IMAGE },
     };
   }, []);
 
+  useEffect(() => {
+    shaderMaterialRef.current.uniforms.tDiffuse.value = diffuse_map_texture;
+    shaderMaterialRef.current.uniforms.tDiffuse.value.needsUpdate = true;
+    shaderMaterialRef.current.uniforms.tDisplacement.value = displacement_map_texture;
+    shaderMaterialRef.current.uniforms.tDisplacement.value.needsUpdate = true;
+    shaderMaterialRef.current.uniforms.tRareEarthMetals.value = rare_earth_metals_map_texture;
+    shaderMaterialRef.current.uniforms.tRareEarthMetals.value.needsUpdate = true;
+    shaderMaterialRef.current.uniforms.tGravity.value = gravity_map_texture;
+    shaderMaterialRef.current.uniforms.tGravity.value.needsUpdate = true;
+  }, [
+    diffuse_map_texture,
+    displacement_map_texture,
+    gravity_map_texture,
+    rare_earth_metals_map_texture,
+  ]);
+
   useFrame(({ mouse }) => {
-   
     // update our uniforms imperatively
     shaderMaterialRef.current.uniforms.mouse.value = mouse;
     shaderMaterialRef.current.uniforms.mouse.value.needsUpdate = true;
-    shaderMaterialRef.current.uniforms.tSurface.value = new THREE.Texture();  // <- @TODO
-    shaderMaterialRef.current.uniforms.tSurface.value.needsUpdate = true;
-    
   });
 
   useFrame((_state, delta) => {
@@ -155,26 +198,27 @@ const HeavenlyBody = (props: HeavenlyBodyPropsType): React.ReactElement<Heavenly
     }
   });
 
-	return (
-		<mesh ref={mesh}>
-		<sphereBufferGeometry args={[props.radius, 2 * SPHERE_MESH_RESOLUTION, 1 * SPHERE_MESH_RESOLUTION]} />
-		<shaderMaterial
-				ref={shaderMaterialRef}
-				alphaTest={0}
-				attach="material"
-				defines={{}}
-				fragmentShader={fragmentShader}
-				side={THREE.DoubleSide}
-				uniforms={initialUniforms}
-				vertexShader={vertexShader}
-				depthWrite
-				vertexColors
-				// needsUpdate={true}
-				// uniformsNeedUpdate={true}
-		/>
-		
-	</mesh>
-	)
-}
+  return (
+    <mesh ref={mesh} receiveShadow>
+      <sphereBufferGeometry
+        args={[props.radius, 2 * SPHERE_MESH_RESOLUTION, 1 * SPHERE_MESH_RESOLUTION]}
+      />
+      <shaderMaterial
+        ref={shaderMaterialRef}
+        alphaTest={0}
+        attach="material"
+        // defines={{ }}
+        fragmentShader={fragmentShader}
+        side={THREE.DoubleSide}
+        uniforms={initialUniforms}
+        vertexShader={vertexShader}
+        depthWrite
+        vertexColors
+        // needsUpdate={true}
+        // uniformsNeedUpdate={true}
+      />
+    </mesh>
+  );
+};
 
-export default HeavenlyBody; 
+export default HeavenlyBody;

@@ -10,7 +10,7 @@ const LandingPage = (): React.ReactElement<LandingPagePropsType> => (
     <VerticalDivider />
     <h1 className="w-full pb-2 text-center"> solar system rendered using webgl</h1>
     <VerticalDivider />
-    
+
     <div className="pt-4 space-y-1">
       <p className="text-xs">.wav or .mp3</p>
       <p className="text-xs">We do not store your music.</p>
