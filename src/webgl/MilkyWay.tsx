@@ -1,13 +1,15 @@
 // HMJ
 import { TextureLoader } from 'three/src/loaders/TextureLoader';
 import { useLoader } from '@react-three/fiber';
-import { UNIVERSE_RADIUS } from '../CONSTANTS';
+
+import { UNIVERSE_RADIUS, RaycasterLayers } from '../CONSTANTS';
 const MilkyWay = () => {
   const milywayTexture = useLoader(TextureLoader, '/milky-way.jpg');
+
   return (
-    <mesh position={[0.0, 0.0, 0.0]}>
+    <mesh layers={RaycasterLayers.CosmicBackground} position={[0.0, 0.0, 0.0]}>
       <sphereBufferGeometry args={[UNIVERSE_RADIUS, 30, 30]} attach="geometry" />
-      <meshBasicMaterial side={2} map={milywayTexture} attach="material" />
+      <meshBasicMaterial attach="material" map={milywayTexture} side={2} />
     </mesh>
   );
 };

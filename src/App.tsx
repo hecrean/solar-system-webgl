@@ -1,6 +1,7 @@
 // HMJ
 import React, { Suspense } from 'react';
-import Universe from './webgl/Universe';
+
+import { Layout } from './Layout';
 
 const Overlay = () => {
   return (
@@ -30,30 +31,12 @@ const Overlay = () => {
   );
 };
 
-type Resource<T> = {
-  diffuse_map: T;
-  displacement_map: T;
-  gravity_map: T;
-  rare_earth_metals_map: T;
-};
-
-const resourcesUrls: Array<Resource<string>> = [
-  {
-    diffuse_map: '/mars/mars-diffuse-map.jpeg',
-    displacement_map: '/mars/med_sl_rough_35_s-2k.jpeg',
-    rare_earth_metals_map: '/mars/mars-metals-map.jpeg',
-    gravity_map: '/mars/mars-grav-2k.jpeg',
-  },
-];
-
 const App = (): React.ReactElement => {
   return (
-    <>
-      <Suspense fallback={null}>
-        <Universe resources={resourcesUrls} />
-      </Suspense>
+    <Suspense fallback={null}>
       <Overlay />
-    </>
+      <Layout />
+    </Suspense>
   );
 };
 
