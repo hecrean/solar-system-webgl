@@ -22,11 +22,10 @@ const SelectToZoom: FC<Record<string, unknown>> = ({ children }) => {
 
   return (
     <group
-      onDoubleClick={(e) => (
-        e.stopPropagation(), e.delta <= 2 && activate(active === e.object ? null : e.object)
-      )}
-
-      // onPointerMissed={(_) => activate(null)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        e.delta <= 2 && activate(active === e.object ? null : e.object);
+      }}
     >
       {' '}
       {children}{' '}

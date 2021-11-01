@@ -3,7 +3,7 @@ import { TextureLoader } from 'three/src/loaders/TextureLoader';
 import { useLoader } from '@react-three/fiber';
 
 import { UNIVERSE_RADIUS, RaycasterLayers } from '../CONSTANTS';
-const MilkyWay = () => {
+const MilkyWay = (): React.ReactElement => {
   const milywayTexture = useLoader(TextureLoader, '/milky-way.jpg');
 
   return (
