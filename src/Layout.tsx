@@ -43,6 +43,9 @@ export const Layout: FC<LayoutPropsType> = () => {
           camera.layers.enableAll();
           raycaster.layers.enableAll();
           raycaster.layers.disable(RaycasterLayers.CosmicBackground);
+          camera.position.x = UNIVERSE_RADIUS * 0.3;
+          camera.position.z = UNIVERSE_RADIUS * 0.3;
+          camera.position.y = 0;
         }}
       >
         <Universe resources={resourcesUrls} />

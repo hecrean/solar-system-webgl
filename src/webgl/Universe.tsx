@@ -1,6 +1,7 @@
 // HMJ
 
 import React, { Suspense, useRef, useState, FC, useEffect } from 'react';
+// eslint-disable-next-line
 import { Bounds, useBounds, Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Color, Group, Mesh, Object3D, Vector3 } from 'three';
@@ -13,6 +14,7 @@ import HeavenlyBody from './HeavenlyBody';
 import MilkyWay from './MilkyWay';
 import { OutlinEffect } from './OutlineEffect';
 
+// eslint-disable-next-line
 const SelectToZoom: FC<Record<string, unknown>> = ({ children }) => {
   const api = useBounds();
   const [active, activate] = useState<Object3D | null>(null);
@@ -204,11 +206,11 @@ export const Universe = (props: UniversePropsType): React.ReactElement<UniverseP
   return (
     <group>
       <Suspense fallback={null}>
-        <Bounds margin={1.2}>
-          <SelectToZoom>
-            <SolarSystemScene resources={props.resources} setSelectedObjects={setSelectedObjects} />
-          </SelectToZoom>
-        </Bounds>
+        {/* <Bounds margin={100}>
+          <SelectToZoom> */}
+        <SolarSystemScene resources={props.resources} setSelectedObjects={setSelectedObjects} />
+        {/* </SelectToZoom>
+        </Bounds> */}
       </Suspense>
       <OutlinEffect selection={selectedObjects} />
     </group>
